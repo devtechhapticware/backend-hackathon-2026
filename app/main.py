@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from app.database import AsyncSessionLocal, check_db_connection, init_db
 from app.models import Token
 from app.agents import router as agents_router
+from app.gateway import router as gateway_router
 
 # Logging setup
 logger = logging.getLogger("gateway")
@@ -76,6 +77,7 @@ app = FastAPI(
 
 # Router
 app.include_router(agents_router)
+app.include_router(gateway_router)
 
 
 # Endpoints
