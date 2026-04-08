@@ -15,6 +15,8 @@ from app.models import Token
 from app.agents import router as agents_router
 from app.gateway import router as gateway_router
 from app.health_monitor import health_monitor_loop
+from app.logs import router as logs_router
+from app.feedback import router as feedback_router
 
 # Logging setup
 logger = logging.getLogger("gateway")
@@ -95,9 +97,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Router
+# Routers
 app.include_router(agents_router)
 app.include_router(gateway_router)
+app.include_router(logs_router)
+app.include_router(feedback_router)
 
 
 # Endpoints

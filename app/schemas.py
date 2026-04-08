@@ -1,13 +1,13 @@
 """
-Pydantic request/response models for all gateway endpoints.
+Pydantic models for request/response validation.
 
-Every field is explicitly typed and validated here — if a student service
-or caller sends a malformed request, Pydantic rejects it with a 422 before
-any business logic runs.
+Ensures:
+  - Input data is validated before reaching business logic
+  - Consistent API contracts across all endpoints
 
-Two layers of validation exist:
-  1. Pydantic (here)   — validates data before it enters the route
-  2. DB constraints    — validates data before it enters PostgreSQL (models.py)
+Validation layers:
+  1. Pydantic (API level)
+  2. Database constraints (persistence level)
 """
 
 from datetime import datetime
@@ -111,8 +111,7 @@ class AgentResponse(BaseModel):
 # Gateway execution
 class RunRequest(BaseModel):
     """
-    The exact input contract every student service must accept.
-    The gateway wraps the caller's data in this structure before forwarding.
+    Input contract forwarded to agent services via /run.
     """
     payload: dict[str, Any] = Field(
         default_factory=dict,
@@ -122,9 +121,13 @@ class RunRequest(BaseModel):
 
 class RunResponse(BaseModel):
     """
-    The standardized response returned to the caller after /run completes.
-    Enriched by the gateway with run_id and latency_ms (not present in the
-    raw student service response).
+    Standardized response returned by the gateway.
+
+    Includes:
+      - agent output
+      - execution status
+      - run_id (for feedback linkage)
+      - latency
     """
     agent_name: str
     result: dict[str, Any]
@@ -159,6 +162,9 @@ class TokenResponse(BaseModel):
 
 # Feedback
 class FeedbackRequest(BaseModel):
+    """
+    Feedback payload linked to a specific run.
+    """
     run_id: str = Field(..., description="The run_id returned by POST /run")
     rating: int = Field(
         ...,
@@ -192,6 +198,9 @@ class DashboardResponse(BaseModel):
 
 # Logs
 class LogEntry(BaseModel):
+    """
+    Representation of a single execution log entry.
+    """
     id: int
     agent_name: str
     input: dict
