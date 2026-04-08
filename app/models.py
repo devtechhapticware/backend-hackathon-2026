@@ -15,7 +15,7 @@ Table summary:
   health_checks  — timestamped health-ping results for every agent
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import CheckConstraint, Column, DateTime, Integer, String, Numeric, Text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -41,7 +41,7 @@ class Agent(Base):
     category = Column(String(100), nullable=False)
     endpoint = Column(String(500), nullable=False)
     status = Column(String(50), nullable=False, default="online")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.now(tz=timezone.utc))
 
 
 class AgentLog(Base):
@@ -65,7 +65,7 @@ class AgentLog(Base):
     input = Column(JSONB, nullable=False)
     output = Column(JSONB, nullable=False)
     latency_ms = Column(Numeric(10, 2))
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.now(tz=timezone.utc))
 
 
 class Token(Base):
@@ -85,7 +85,7 @@ class Token(Base):
     id = Column(Integer, primary_key=True)
     token = Column(String(500), unique=True, nullable=False, index=True)
     scope = Column(String(100), nullable=False, default="run")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.now(tz=timezone.utc))
 
 
 class AgentFeedback(Base):
@@ -109,7 +109,7 @@ class AgentFeedback(Base):
     run_id = Column(String(255), nullable=False, index=True)
     rating = Column(Integer, nullable=False)
     comment = Column(Text)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.now(tz=timezone.utc))
 
     __table_args__ = (
         CheckConstraint("rating IN (0, 1)", name="ck_agent_feedback_rating_binary"),
@@ -133,4 +133,4 @@ class HealthCheck(Base):
     id = Column(Integer, primary_key=True)
     agent_name = Column(String(255), nullable=False, index=True)
     status = Column(String(50), nullable=False)
-    checked_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    checked_at = Column(DateTime, nullable=False, default=datetime.now(tz=timezone.utc))
