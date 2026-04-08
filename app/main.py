@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import secrets
 from contextlib import asynccontextmanager
@@ -13,6 +14,7 @@ from app.database import AsyncSessionLocal, check_db_connection, init_db
 from app.models import Token
 from app.agents import router as agents_router
 from app.gateway import router as gateway_router
+from app.health_monitor import health_monitor_loop
 
 # Logging setup
 logger = logging.getLogger("gateway")
@@ -23,13 +25,15 @@ async def seed_admin_token():
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Token).where(Token.scope == "admin"))
         if result.scalar_one_or_none():
+            logger.info("Admin token already exists — skipping seeding.")
             return
 
         token_value = secrets.token_urlsafe(32)
         db.add(Token(token=token_value, scope="admin"))
         await db.commit()
+
         logger.warning("\n" + "=" * 60)
-        logger.warning("ADMIN TOKEN IS GENERATED ONLY ONCE SAVE THIS IMMEDIATELY)")
+        logger.warning("ADMIN TOKEN IS GENERATED ONLY ONCE — SAVE THIS IMMEDIATELY")
         logger.warning("")
         logger.warning("   %s", token_value)
         logger.warning("")
@@ -41,13 +45,16 @@ async def seed_admin_token():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Handles application startup and shutdown lifecycle.
+    Application lifecycle:
+
     Startup:
-    - Verifies database connectivity
-    - Initializes database tables
+      - Verify database connectivity
+      - Initialize database tables
+      - Seed admin token
+      - Start health monitor
 
     Shutdown:
-    - Reserved for future cleanup tasks
+      - Stop background tasks cleanly
     """
 
     # Startup
@@ -61,11 +68,23 @@ async def lifespan(app: FastAPI):
 
     await init_db()
     await seed_admin_token()
+
+    # Start health monitor
+    monitor_task = asyncio.create_task(
+        health_monitor_loop(),
+        name="health_monitor",
+    )
+
     logger.info("Startup complete. Gateway is ready.")
     yield
 
     # Shutdown
     logger.info("Shutting down Agent Gateway...")
+    monitor_task.cancel()
+    try:
+        await monitor_task
+    except asyncio.CancelledError:
+        logger.info("Health monitor stopped cleanly.")
 
 
 # FastAPI App Instance
@@ -73,7 +92,8 @@ app = FastAPI(
     title="Agent Gateway",
     description="Central gateway for managing and routing agent services.",
     version="1.0.0",
-    lifespan=lifespan, )
+    lifespan=lifespan,
+)
 
 # Router
 app.include_router(agents_router)
